@@ -1,0 +1,5 @@
+# Holds your passwords and codes
+secret.h
+
+# build folder
+build

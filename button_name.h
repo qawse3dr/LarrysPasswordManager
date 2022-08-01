@@ -8,13 +8,14 @@
  *
  * @author: qawse3dr a.k.a Larry Milne
  */
+#pragma once
+
+#include <vector>
 
 // BUTTONS for password keypad
-#define BUTTON_ONE 13
-#define BUTTON_TWO 12
-#define BUTTON_THREE 10
-#define BUTTON_FOUR 18
-#define BUTTON_FIVE 19
-#define BUTTON_SIX 20
+std::vector<int> key_button_maps = {2, 10, 11, 3, 4, 6, 1, 5, 7};
 
-#define BUTTON_SUBMIT 4
+#define BUTTON_SUBMIT 12
+#define BUTTON_CANCEL 8  // TODO
+#define BUTTON_FLASH 9   // TODO
+#define LED_PIN 0

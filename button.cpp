@@ -10,7 +10,6 @@
  */
 
 #include "button.h"
-
 #include "hardware/gpio.h"
 
 Gpio::Gpio(int gpio_pin) : gpio_pin_(gpio_pin) { gpio_init(gpio_pin_); }
@@ -25,7 +24,9 @@ GpioInputButton::GpioInputButton(int gpio_pin, bool pull_up)
   }
 }
 
-bool GpioInputButton::pressed() { return gpio_get(gpio_pin_); }
+bool GpioInputButton::pressed() {
+  return (pull_up_) ? !gpio_get(gpio_pin_) : gpio_get(gpio_pin_);
+}
 
 GpioOutput::GpioOutput(int gpio_pin, bool start_state)
     : Gpio(gpio_pin), state_(start_state) {

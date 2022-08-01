@@ -17,7 +17,9 @@
 
 #include "bsp/board.h"
 #include "button.h"
+#include "button_name.h"
 #include "hardware/gpio.h"
+#include "pico/bootrom.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
 #include "secret.h"
@@ -30,7 +32,7 @@ LED_STATE led_state = LED_STATE::BLINK;
 
 // LED runtime loop
 void ledHandler() {
-  GpioOutput led(5);
+  GpioOutput led(LED_PIN);
 
   while (true) {
     while (led_state == LED_STATE::BLINK) {
@@ -60,21 +62,22 @@ static void sendString(const std::string& str) {
     while (true) {
       sleep_ms(20);
       tud_task();
-      if (!tud_hid_ready()) continue;
+      if (!tud_hid_n_ready(ITF_NUM_KEYBOARD)) continue;
 
       uint8_t keycode[6] = {0};
       uint8_t modifier = 0;
       if (conv_table[c][0]) modifier = KEYBOARD_MODIFIER_LEFTSHIFT;
       keycode[0] = conv_table[c][1];
-      tud_hid_keyboard_report(REPORT_ID_KEYBOARD, modifier, keycode);
+      tud_hid_n_keyboard_report(ITF_NUM_KEYBOARD, 0, modifier, keycode);
       break;
     }
     // release key
     while (true) {
       sleep_ms(20);
       tud_task();
-      if (!tud_hid_ready()) continue;
-      tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, NULL);
+      if (!tud_hid_n_ready(ITF_NUM_KEYBOARD)) continue;
+      tud_hid_n_keyboard_report(ITF_NUM_KEYBOARD, 0, 0, NULL);
+
       break;
     }
   }
@@ -84,23 +87,30 @@ int main() {
   board_init();
   tusb_init();
 
-  std::vector<GpioInputButton> buttons = {4, 10, 12, 13, 18, 19, 20};
+  std::vector<GpioInputButton> buttons;
+  for (auto but : key_button_maps) {
+    buttons.emplace_back(but, true);
+  }
+  buttons.emplace_back(BUTTON_SUBMIT, true);
+  buttons.emplace_back(BUTTON_CANCEL, true);
+  buttons.emplace_back(BUTTON_FLASH, true);
 
   multicore_launch_core1(ledHandler);
 
   RUN_STATE state = RUN_STATE::INPUT;
   std::vector<int> password = {};
-  std::map<int, std::string> secret_passwords{
-      {BUTTON_ONE, CODE_ONE},     {BUTTON_TWO, CODE_TWO},
-      {BUTTON_THREE, CODE_THREE}, {BUTTON_FOUR, CODE_FOUR},
-      {BUTTON_FIVE, CODE_FIVE},   {BUTTON_SIX, CODE_SIX}};
+  std::map<int, std::string> secret_passwords;
+  for (int i = 0; i < key_button_maps.size(); i++) {
+    secret_passwords.emplace(std::pair(key_button_maps[i], passwords[i]));
+  }
+
   while (true) {
     tud_task();
     for (auto& button : buttons) {
       if (button.pressed()) {
         // wait for button to become unpressed
         while (button.pressed()) {
-          sleep_ms(100);
+          sleep_ms(10);
         }
 
         if (button.getPin() == BUTTON_SUBMIT && state == RUN_STATE::SELECT) {
@@ -120,6 +130,14 @@ int main() {
           }
           password.clear();
           break;
+        } else if (button.getPin() == BUTTON_CANCEL) {
+          state = RUN_STATE::INPUT;
+          led_state = LED_STATE::ERROR_BLINK;
+          sleep_ms(250);
+          led_state = LED_STATE::BLINK;
+          password.clear();
+        } else if (button.getPin() == BUTTON_FLASH) {
+          reset_usb_boot(0, 0);
         }
 
         if (state == RUN_STATE::INPUT) {
@@ -131,7 +149,6 @@ int main() {
         }
       }
     }
-    sleep_ms(100);
   }
   return 0;
 }
@@ -148,13 +165,6 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report,
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
                                hid_report_type_t report_type, uint8_t* buffer,
                                uint16_t reqlen) {
-  // TODO not Implemented
-  (void)instance;
-  (void)report_id;
-  (void)report_type;
-  (void)buffer;
-  (void)reqlen;
-
   return 0;
 }
 

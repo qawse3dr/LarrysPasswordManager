@@ -88,12 +88,13 @@ int main() {
   tusb_init();
 
   std::vector<GpioInputButton> buttons;
-  for (auto but : key_button_maps) {
+  for (auto but : key_button_maps) {  // false for version 1
     buttons.emplace_back(but, true);
   }
   buttons.emplace_back(BUTTON_SUBMIT, true);
-  buttons.emplace_back(BUTTON_CANCEL, true);
-  buttons.emplace_back(BUTTON_FLASH, true);
+
+  if (BUTTON_CANCEL != -1) buttons.emplace_back(BUTTON_CANCEL, true);
+  if (BUTTON_FLASH != -1) buttons.emplace_back(BUTTON_FLASH, true);
 
   multicore_launch_core1(ledHandler);
 
